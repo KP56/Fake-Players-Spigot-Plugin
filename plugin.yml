@@ -1,0 +1,7 @@
+name: FakePlayers
+main: me.KP56.FakePlayers.Main
+version: 1.0.0
+author: KP56
+
+commands:
+  fakeplayers:
