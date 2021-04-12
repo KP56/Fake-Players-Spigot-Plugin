@@ -24,13 +24,14 @@ public class FakePlayers implements CommandExecutor {
                 sender.sendMessage(Color.format("&2> &3/FakePlayers disband (Name/All) &b- disbands fake players"));
                 sender.sendMessage(Color.format("&2> &3/FakePlayers chat (Name/All) (Chat Message) &b- makes fake players type something in chat (it can be a command)"));
                 sender.sendMessage(Color.format("&2> &3/FakePlayers list &b- displays a fake player list"));
+                sender.sendMessage(Color.format("&2> &3/FakePlayers reload &b- reloads config.yml"));
             } else {
                 switch (args[0]) {
                     case "summon":
                         if (args.length == 2) {
-                            summon(sender, args[1]);
+                            summon(sender, args[1], args);
                         } else if (args.length == 3) {
-                            summon(sender, args[1], Integer.parseInt(args[2]));
+                            summon(sender, args[1], Integer.parseInt(args[2]), args);
                         } else {
                             Bukkit.dispatchCommand(sender, "fakeplayers");
                         }
@@ -43,14 +44,14 @@ public class FakePlayers implements CommandExecutor {
                                 message.append(args[i]).append(" ");
                             }
 
-                            chat(sender, args[1], message.toString());
+                            chat(sender, args[1], message.toString(), args);
                         } else {
                             Bukkit.dispatchCommand(sender, "fakeplayers");
                         }
                         break;
                     case "disband":
                         if (args.length == 2) {
-                            disband(sender, args[1]);
+                            disband(sender, args[1], args);
                         } else {
                             Bukkit.dispatchCommand(sender, "fakeplayers");
                         }
@@ -62,23 +63,29 @@ public class FakePlayers implements CommandExecutor {
                             Bukkit.dispatchCommand(sender, "fakeplayers");
                         }
                         break;
+                    case "reload":
+                        Bukkit.getPluginManager().disablePlugin(Main.getPlugin());
+                        Bukkit.getPluginManager().getPlugin("FakePlayers").reloadConfig();
+                        Bukkit.getPluginManager().enablePlugin(Main.getPlugin());
+                        sender.sendMessage(Main.getConfigMessage(Main.config, "messages.reload", args));
+                        break;
                 }
             }
         } else {
-            sender.sendMessage(Color.format("&cYou do not have permissions to execute that command."));
+            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.no-permissions", args));
         }
         return true;
     }
 
-    private void summon(CommandSender sender, String name, int number) {
+    private void summon(CommandSender sender, String name, int number, String[] args) {
         if (number == 1) {
             if (new FakePlayer(UUID.randomUUID(), name, Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn()) {
-                sender.sendMessage(Color.format("&aSuccessfully summoned a Fake Player."));
+                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.success-one", args));
             } else {
-                sender.sendMessage(Color.format("&cFailed to summon a Fake Player."));
+                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.failed", args));
             }
         } else if (number < 1) {
-            sender.sendMessage(Color.format("&cCannot summon this amount of players."));
+            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.incorrect-number", args));
         } else {
             int addition = 0;
             for (int i = 1; FakePlayer.getFakePlayer(name + i) != null; i++) {
@@ -87,17 +94,17 @@ public class FakePlayers implements CommandExecutor {
 
             for (int i = addition; i < number + addition; i++) {
                 int finalI = i;
-                Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> new FakePlayer(UUID.randomUUID(), name + (finalI + 1), Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn(), finalI * 4);
+                Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> new FakePlayer(UUID.randomUUID(), name + (finalI + 1), Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn(), finalI * Main.config.getInt("tick-delay-between-joins"));
             }
-            sender.sendMessage(Color.format("&aTrying to summon " + number + " Fake Players."));
+            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.trying-amount", args));
         }
     }
 
-    private void summon(CommandSender sender, String name) {
-        summon(sender, name, 1);
+    private void summon(CommandSender sender, String name, String[] args) {
+        summon(sender, name, 1, args);
     }
 
-    private void chat(CommandSender sender, String name, String message) {
+    private void chat(CommandSender sender, String name, String message, String[] args) {
         if (name.equalsIgnoreCase("All")) {
             for (FakePlayer player : FakePlayer.getFakePlayers()) {
                 player.getEntityPlayer().getBukkitEntity().chat(message);
@@ -108,30 +115,30 @@ public class FakePlayers implements CommandExecutor {
                 if (FakePlayer.getFakePlayer(name) != null) {
                     PLAYER.chat(message);
                 } else {
-                    sender.sendMessage(Color.format("&cThis is not a Fake Player!"));
+                    sender.sendMessage(Main.getConfigMessage(Main.config, "messages.chat.not-a-fake-player", args));
                 }
             } else {
-                sender.sendMessage(Color.format("&cThis player does not exist!"));
+                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.chat.player-is-not-online", args));
             }
         }
     }
 
-    private void disband(CommandSender sender, String name) {
+    private void disband(CommandSender sender, String name, String[] args) {
 
         if (name.equalsIgnoreCase("All")) {
             final List<FakePlayer> copy = new ArrayList<>(FakePlayer.getFakePlayers());
             for (FakePlayer player : copy) {
                 player.removePlayer();
             }
-            sender.sendMessage(Color.format("&aSuccessfully disbanded all Fake Players."));
+            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.disband.all-disbanded-success", args));
         } else {
             final FakePlayer FAKE_PLAYER = FakePlayer.getFakePlayer(name);
 
             if (FAKE_PLAYER != null) {
                 FAKE_PLAYER.removePlayer();
-                sender.sendMessage(Color.format("&aSuccessfully disbanded " + name));
+                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.disband.one-disbanded-success", args));
             } else {
-                sender.sendMessage(Color.format("&cThis player does not exist or is not a Fake Player!"));
+                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.disband.failed", args));
             }
         }
     }

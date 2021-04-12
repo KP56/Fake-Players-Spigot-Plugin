@@ -1,0 +1,18 @@
+tick-delay-between-joins: 4
+prefix: "&2&lFake Players&7 »&r"
+
+messages:
+  no-permissions: "&cYou do not have permissions to execute that command."
+  summon:
+    failed: "Failed to summon a Fake Player."
+    incorrect-number: "Cannot summon this amount of players."
+    success-one: "Successfully summoned a Fake Player."
+    trying-amount: "Trying to summon %arg2% Fake Players."
+  chat:
+    not-a-fake-player: "This is not a Fake Player!"
+    player-is-not-online: "This player does not exist!"
+  disband:
+    failed: "This player does not exist or is not a Fake Player!"
+    all-disbanded-success: "Successfully disbanded all Fake Players."
+    one-disbanded-success: "Successfully disbanded %arg1%."
+  reload: "Config has been successfully reloaded."
