@@ -94,7 +94,9 @@ public class FakePlayers implements CommandExecutor {
 
             for (int i = addition; i < number + addition; i++) {
                 int finalI = i;
-                Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> new FakePlayer(UUID.randomUUID(), name + (finalI + 1), Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn(), finalI * Main.config.getInt("tick-delay-between-joins"));
+                Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
+                    new FakePlayer(UUID.randomUUID(), name + (finalI + 1), Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn();
+                }, finalI * Main.config.getInt("tick-delay-between-joins"));
             }
             sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.trying-amount", args));
         }
@@ -107,7 +109,7 @@ public class FakePlayers implements CommandExecutor {
     private void chat(CommandSender sender, String name, String message, String[] args) {
         if (name.equalsIgnoreCase("All")) {
             for (FakePlayer player : FakePlayer.getFakePlayers()) {
-                player.getEntityPlayer().getBukkitEntity().chat(message);
+                Bukkit.getPlayer(player.getName()).chat(message);
             }
         } else {
             final Player PLAYER = Bukkit.getPlayer(name);
@@ -155,7 +157,7 @@ public class FakePlayers implements CommandExecutor {
         if (list.length() >= 3) {
             list = new StringBuilder(list.substring(0, list.length() - 2));
 
-            String[] lists = new String[(int) Math.ceil((double) list.length() / 32.0d)];
+            String[] lists = new String[(int) Math.ceil((double) list.length() / 48.0d)];
 
             int cuts = 0;
             int lastCut = 0;
@@ -163,7 +165,7 @@ public class FakePlayers implements CommandExecutor {
             for (int i = 0; i < list.length(); i++) {
                 char c = list.charAt(i);
 
-                if (c == ',' && i - lastCut >= 32) {
+                if (c == ',' && i - lastCut >= 48) {
                     lastCut = i;
                     lists[cuts] = listToAdd.toString();
                     cuts++;

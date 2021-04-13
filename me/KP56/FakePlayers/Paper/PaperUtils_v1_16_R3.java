@@ -14,7 +14,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
-public final class PaperUtils {
+public final class PaperUtils_v1_16_R3 {
     public static void playerInitialSpawnEvent(Player p) {
         PlayerSpawnLocationEvent ev = new PlayerInitialSpawnEvent(p, p.getLocation());
         Bukkit.getPluginManager().callEvent(ev);

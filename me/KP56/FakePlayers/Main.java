@@ -2,8 +2,10 @@ package me.KP56.FakePlayers;
 
 import de.jeff_media.updatechecker.UpdateChecker;
 import me.KP56.FakePlayers.Commands.FakePlayers;
+import me.KP56.FakePlayers.MultiVersion.Version;
 import me.KP56.FakePlayers.Utils.Color;
 import me.KP56.FakePlayers.bstats.Metrics;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -18,8 +20,18 @@ public class Main extends JavaPlugin {
 
     public static FileConfiguration config;
 
+    private static Version version = Version.valueOf(Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3]);
+
     @Override
     public void onEnable() {
+        if (version == null) {
+            Bukkit.getLogger().warning("This spigot version is not supported by Fake Players!");
+            Bukkit.getLogger().warning("This spigot version is not supported by Fake Players!");
+            Bukkit.getLogger().warning("This spigot version is not supported by Fake Players!");
+        }
+
+        Bukkit.getLogger().info("Detected version: " + version.name());
+
         getCommand("fakeplayers").setExecutor(new FakePlayers());
 
         plugin = this;
@@ -80,5 +92,9 @@ public class Main extends JavaPlugin {
         }
 
         return Color.format(config.getString("prefix") + " " + text.replace("%", ""));
+    }
+
+    public static Version getVersion() {
+        return version;
     }
 }
