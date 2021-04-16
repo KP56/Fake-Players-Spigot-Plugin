@@ -1,5 +1,7 @@
 package me.KP56.FakePlayers;
 
+import me.KP56.FakePlayers.Action.Action;
+import me.KP56.FakePlayers.Action.ActionWait;
 import me.KP56.FakePlayers.MultiVersion.Version;
 import me.KP56.FakePlayers.MultiVersion.v1_12_R1;
 import me.KP56.FakePlayers.MultiVersion.v1_16_R3;
@@ -21,6 +23,8 @@ public class FakePlayer {
     private Location location;
 
     private Object entityPlayer;
+
+    private List<Action> actions = new ArrayList<>();
 
     public FakePlayer(UUID uuid, String name, Location location) {
         this.uuid = uuid;
@@ -105,5 +109,30 @@ public class FakePlayer {
 
     public Location getLocation() {
         return location;
+    }
+
+    public void addAction(Action action) {
+        actions.add(action);
+    }
+
+    public void perform(int number) {
+        for (int i = 0; i < number; i++) {
+            for (Action action : actions) {
+                if (!(action instanceof ActionWait)) {
+                    Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> action.perform(this), 0);
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    action.perform(this);
+                }
+            }
+        }
+    }
+
+    public List<Action> getActions() {
+        return actions;
     }
 }

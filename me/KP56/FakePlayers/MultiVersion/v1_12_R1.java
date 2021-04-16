@@ -14,30 +14,46 @@ import org.bukkit.craftbukkit.v1_12_R1.CraftServer;
 import org.bukkit.craftbukkit.v1_12_R1.CraftWorld;
 import org.bukkit.craftbukkit.v1_12_R1.entity.CraftPlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.UUID;
 
 public final class v1_12_R1 {
     public static EntityPlayer spawn(FakePlayer fakePlayer) {
-        final WorldServer WORLD_SERVER = ((CraftWorld) fakePlayer.getLocation().getWorld()).getHandle();
-        final Location LOCATION = fakePlayer.getLocation();
 
-        final MinecraftServer MC_SERVER = ((CraftServer) Bukkit.getServer()).getServer();
+        try {
+            PlayerPreLoginEvent preLoginEvent = new PlayerPreLoginEvent(fakePlayer.getName(), InetAddress.getByName("127.0.0.1"), fakePlayer.getUUID());
+            AsyncPlayerPreLoginEvent asyncPreLoginEvent = new AsyncPlayerPreLoginEvent(fakePlayer.getName(), InetAddress.getByName("127.0.0.1"), fakePlayer.getUUID());
 
-        EntityPlayer entityPlayer = createEntityPlayer(fakePlayer.getUUID(), fakePlayer.getName(), LOCATION);
+            Bukkit.getPluginManager().callEvent(preLoginEvent);
 
-        entityPlayer.setLocation(LOCATION.getX(), LOCATION.getY(), LOCATION.getZ(), LOCATION.getYaw(), LOCATION.getPitch());
+            new Thread(() -> Bukkit.getPluginManager().callEvent(asyncPreLoginEvent)).start();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
+        WorldServer worldServer = ((CraftWorld) fakePlayer.getLocation().getWorld()).getHandle();
+        Location location = fakePlayer.getLocation();
+
+        MinecraftServer mcServer = ((CraftServer) Bukkit.getServer()).getServer();
+
+        EntityPlayer entityPlayer = createEntityPlayer(fakePlayer.getUUID(), fakePlayer.getName(), location);
+
+        entityPlayer.setLocation(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
 
         DataWatcher data = entityPlayer.getDataWatcher();
         data.set(DataWatcherRegistry.a.a(13), (byte) 127);
 
-        final String JOIN_MESSAGE = getJoinMessage(entityPlayer);
+        String joinMessage = getJoinMessage(entityPlayer);
 
         Player bukkitPlayer = entityPlayer.getBukkitEntity();
 
@@ -45,37 +61,37 @@ public final class v1_12_R1 {
             PaperUtils_v1_12_R1.playerInitialSpawnEvent(bukkitPlayer);
         }
 
-        entityPlayer.spawnIn(WORLD_SERVER);
+        entityPlayer.spawnIn(worldServer);
         entityPlayer.playerInteractManager.a((WorldServer) entityPlayer.world);
-        final GameMode GAMEMODE = Bukkit.getServer().getDefaultGameMode();
-        if (GAMEMODE == GameMode.SURVIVAL) {
+        GameMode gamemode = Bukkit.getServer().getDefaultGameMode();
+        if (gamemode == GameMode.SURVIVAL) {
             entityPlayer.playerInteractManager.b(EnumGamemode.SURVIVAL);
-        } else if (GAMEMODE == GameMode.CREATIVE) {
+        } else if (gamemode == GameMode.CREATIVE) {
             entityPlayer.playerInteractManager.b(EnumGamemode.CREATIVE);
-        } else if (GAMEMODE == GameMode.ADVENTURE) {
+        } else if (gamemode == GameMode.ADVENTURE) {
             entityPlayer.playerInteractManager.b(EnumGamemode.ADVENTURE);
-        } else if (GAMEMODE == GameMode.SPECTATOR) {
+        } else if (gamemode == GameMode.SPECTATOR) {
             entityPlayer.playerInteractManager.b(EnumGamemode.SURVIVAL);
         }
 
-        entityPlayer.playerConnection = new PlayerConnection(MC_SERVER, new NetworkManager(EnumProtocolDirection.CLIENTBOUND), entityPlayer);
+        entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.CLIENTBOUND), entityPlayer);
 
         entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
         entityPlayer.playerConnection.networkManager.channel.close();
 
-        WORLD_SERVER.getPlayerChunkMap().addPlayer(entityPlayer);
-        MC_SERVER.getPlayerList().players.add(entityPlayer);
+        worldServer.getPlayerChunkMap().addPlayer(entityPlayer);
+        mcServer.getPlayerList().players.add(entityPlayer);
         try {
             Field j = PlayerList.class.getDeclaredField("j");
             j.setAccessible(true);
-            Object valJ = j.get(MC_SERVER.getPlayerList());
+            Object valJ = j.get(mcServer.getPlayerList());
 
             Method jPut = valJ.getClass().getDeclaredMethod("put", Object.class, Object.class);
             jPut.invoke(valJ, bukkitPlayer.getUniqueId(), entityPlayer);
 
             Field playersByName = PlayerList.class.getDeclaredField("playersByName");
             playersByName.setAccessible(true);
-            Object valPlayersByName = playersByName.get(MC_SERVER.getPlayerList());
+            Object valPlayersByName = playersByName.get(mcServer.getPlayerList());
 
             Method playersByNamePut = Map.class.getDeclaredMethod("put", Object.class, Object.class);
             playersByNamePut.invoke(valPlayersByName, entityPlayer.getName(), entityPlayer);
@@ -86,7 +102,7 @@ public final class v1_12_R1 {
 
         PlayerJoinEvent playerJoinEvent;
 
-        playerJoinEvent = new PlayerJoinEvent(((CraftServer) Bukkit.getServer()).getPlayer(entityPlayer),  JOIN_MESSAGE);
+        playerJoinEvent = new PlayerJoinEvent(((CraftServer) Bukkit.getServer()).getPlayer(entityPlayer),  joinMessage);
 
         Bukkit.getPluginManager().callEvent(playerJoinEvent);
 
@@ -100,7 +116,7 @@ public final class v1_12_R1 {
             connection.sendPacket(new PacketPlayOutNamedEntitySpawn(entityPlayer));
         }
 
-        WORLD_SERVER.addEntity(entityPlayer);
+        worldServer.addEntity(entityPlayer);
 
         Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(), entityPlayer::playerTick, 1, 1);
 
@@ -108,17 +124,17 @@ public final class v1_12_R1 {
     }
 
     private static EntityPlayer createEntityPlayer(UUID uuid, String name, Location location) {
-        final WorldServer WORLD_SERVER = ((CraftWorld) location.getWorld()).getHandle();
-        final MinecraftServer MC_SERVER = ((CraftServer) Bukkit.getServer()).getServer();
-        final GameProfile GAME_PROFILE = new GameProfile(uuid, name);
+        WorldServer worldServer = ((CraftWorld) location.getWorld()).getHandle();
+        MinecraftServer mcServer = ((CraftServer) Bukkit.getServer()).getServer();
+        GameProfile gameProfile = new GameProfile(uuid, name);
 
-        return new EntityPlayer(MC_SERVER, WORLD_SERVER, GAME_PROFILE, new PlayerInteractManager(WORLD_SERVER));
+        return new EntityPlayer(mcServer, worldServer, gameProfile, new PlayerInteractManager(worldServer));
     }
 
     public static void removePlayer(FakePlayer player) {
-        final MinecraftServer MC_SERVER = ((CraftServer) Bukkit.getServer()).getServer();
-        final CraftServer CSERVER = (CraftServer) Bukkit.getServer();
-        final WorldServer WORLD_SERVER = ((CraftWorld) player.getLocation().getWorld()).getHandle();
+        MinecraftServer mcServer = ((CraftServer) Bukkit.getServer()).getServer();
+        CraftServer cserver = (CraftServer) Bukkit.getServer();
+        WorldServer worldServer = ((CraftWorld) player.getLocation().getWorld()).getHandle();
 
         EntityPlayer entityPlayer = (EntityPlayer) player.getEntityPlayer();
 
@@ -126,15 +142,15 @@ public final class v1_12_R1 {
             entityPlayer.closeInventory();
         }
 
-         PlayerQuitEvent playerQuitEvent = new PlayerQuitEvent(CSERVER.getPlayer(entityPlayer), "§e" + entityPlayer.getName() + " left the game");
+         PlayerQuitEvent playerQuitEvent = new PlayerQuitEvent(cserver.getPlayer(entityPlayer), "§e" + entityPlayer.getName() + " left the game");
 
 
         Bukkit.getPluginManager().callEvent(playerQuitEvent);
 
-        WORLD_SERVER.getPlayerChunkMap().removePlayer(entityPlayer);
-        WORLD_SERVER.removeEntity(entityPlayer);
+        worldServer.getPlayerChunkMap().removePlayer(entityPlayer);
+        worldServer.removeEntity(entityPlayer);
 
-        if (MC_SERVER.isMainThread()) {
+        if (mcServer.isMainThread()) {
             entityPlayer.playerTick();
         }
 
@@ -145,12 +161,12 @@ public final class v1_12_R1 {
 
         entityPlayer.getBukkitEntity().disconnect(playerQuitEvent.getQuitMessage());
         entityPlayer.getAdvancementData().a();
-        MC_SERVER.getPlayerList().players.remove(entityPlayer);
+        mcServer.getPlayerList().players.remove(entityPlayer);
 
         try {
             Field j = PlayerList.class.getDeclaredField("j");
             j.setAccessible(true);
-            Object valJ = j.get(MC_SERVER.getPlayerList());
+            Object valJ = j.get(mcServer.getPlayerList());
 
             Method jRemove = valJ.getClass().getDeclaredMethod("remove", Object.class);
             jRemove.invoke(valJ, entityPlayer.getUniqueID());
@@ -170,11 +186,11 @@ public final class v1_12_R1 {
     }
 
     private static String getJoinMessage(EntityPlayer entityPlayer) {
-        final GameProfile GAMEPROFILE = entityPlayer.getProfile();
-        final UserCache USERCACHE = ((CraftServer) Bukkit.getServer()).getServer().getUserCache();
-        final GameProfile GAMEPROFILE_2 = USERCACHE.getProfile(entityPlayer.getName());
+        GameProfile gameProfile = entityPlayer.getProfile();
+        UserCache userCache = ((CraftServer) Bukkit.getServer()).getServer().getUserCache();
+        GameProfile gameprofile2 = userCache.getProfile(entityPlayer.getName());
 
-        final String s = GAMEPROFILE_2 == null ? GAMEPROFILE.getName() : GAMEPROFILE_2.getName();
+        String s = gameprofile2 == null ? gameProfile.getName() : gameprofile2.getName();
 
         String joinMessage;
         if (entityPlayer.getProfile().getName().equalsIgnoreCase(s)) {

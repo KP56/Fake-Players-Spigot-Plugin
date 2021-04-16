@@ -1,4 +1,8 @@
+update-notifications: true
+bstats: true
+
 tick-delay-between-joins: 4
+
 prefix: "&2&lFake Players&7 »&r"
 
 messages:
@@ -15,4 +19,8 @@ messages:
     failed: "This player does not exist or is not a Fake Player!"
     all-disbanded-success: "Successfully disbanded all Fake Players."
     one-disbanded-success: "Successfully disbanded %arg1%."
+  action:
+    invalid-player: "This Fake Player does not exist!"
+    action-success: "Action has been successfully added to the player."
+    actions-clear: "Actions have been successfully cleared."
   reload: "Config has been successfully reloaded."
