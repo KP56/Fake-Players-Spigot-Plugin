@@ -33,4 +33,13 @@ public class ActionInventoryClick implements Action {
             view.setItem(slot, onCursor);
         }
     }
+
+    @Override
+    public ActionType getType() {
+        return ActionType.INVENTORY_CLICK;
+    }
+
+    public int getSlot() {
+        return slot;
+    }
 }

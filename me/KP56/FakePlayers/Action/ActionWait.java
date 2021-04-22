@@ -18,4 +18,13 @@ public class ActionWait implements Action {
             e.printStackTrace();
         }
     }
+
+    @Override
+    public ActionType getType() {
+        return ActionType.WAIT;
+    }
+
+    public long getDelay() {
+        return delay;
+    }
 }

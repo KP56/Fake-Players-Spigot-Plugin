@@ -33,4 +33,9 @@ public class ActionInteract implements Action {
             Bukkit.getPluginManager().callEvent(e);
         }
     }
+
+    @Override
+    public ActionType getType() {
+        return ActionType.INTERACT;
+    }
 }

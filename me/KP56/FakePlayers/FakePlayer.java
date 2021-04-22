@@ -24,7 +24,7 @@ public class FakePlayer {
 
     private Object entityPlayer;
 
-    private List<Action> actions = new ArrayList<>();
+    public List<Action> actions = new ArrayList<>();
 
     public FakePlayer(UUID uuid, String name, Location location) {
         this.uuid = uuid;

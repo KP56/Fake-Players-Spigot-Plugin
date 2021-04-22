@@ -15,10 +15,7 @@ import org.bukkit.craftbukkit.v1_16_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_16_R3.util.CraftChatMessage;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerPreLoginEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -76,9 +73,12 @@ public final class v1_16_R3 {
         }
 
         entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.CLIENTBOUND), entityPlayer);
+
         entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
 
         entityPlayer.playerConnection.networkManager.channel.close();
+
+        Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter()), 1);
 
         worldServer.addPlayerJoin(entityPlayer);
         mcServer.getPlayerList().players.add(entityPlayer);
@@ -113,6 +113,12 @@ public final class v1_16_R3 {
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendMessage(playerJoinEvent.getJoinMessage());
         }
+
+        PlayerResourcePackStatusEvent resourcePackStatusEventAccepted = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.ACCEPTED);
+        PlayerResourcePackStatusEvent resourcePackStatusEventSuccessfullyLoaded = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
+
+        Bukkit.getPluginManager().callEvent(resourcePackStatusEventAccepted);
+        Bukkit.getPluginManager().callEvent(resourcePackStatusEventSuccessfullyLoaded);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             PlayerConnection connection = ((CraftPlayer) player).getHandle().playerConnection;

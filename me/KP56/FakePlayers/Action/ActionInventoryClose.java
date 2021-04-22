@@ -11,4 +11,9 @@ public class ActionInventoryClose implements Action {
 
         p.closeInventory();
     }
+
+    @Override
+    public ActionType getType() {
+        return ActionType.INVENTORY_CLOSE;
+    }
 }

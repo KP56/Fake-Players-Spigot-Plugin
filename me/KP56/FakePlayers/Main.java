@@ -3,9 +3,11 @@ package me.KP56.FakePlayers;
 import de.jeff_media.updatechecker.UpdateChecker;
 import me.KP56.FakePlayers.Commands.FakePlayers;
 import me.KP56.FakePlayers.MultiVersion.Version;
+import me.KP56.FakePlayers.TabComplete.FakePlayersTabComplete;
 import me.KP56.FakePlayers.Utils.Color;
 import me.KP56.FakePlayers.bstats.Metrics;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -14,7 +16,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class Main extends JavaPlugin {
 
@@ -28,6 +33,11 @@ public class Main extends JavaPlugin {
     @Override
     public void onEnable() {
 
+        File macrosFolder = new File("plugins/FakePlayers/macros");
+        if (!macrosFolder.exists()) {
+            macrosFolder.mkdir();
+        }
+
         if (version == null) {
             Bukkit.getLogger().warning("This spigot version is not supported by Fake Players!");
             Bukkit.getLogger().warning("This spigot version is not supported by Fake Players!");
@@ -37,6 +47,7 @@ public class Main extends JavaPlugin {
         Bukkit.getLogger().info("Detected version: " + version.name());
 
         getCommand("fakeplayers").setExecutor(new FakePlayers());
+        getCommand("fakeplayers").setTabCompleter(new FakePlayersTabComplete());
 
         plugin = this;
 
@@ -67,6 +78,14 @@ public class Main extends JavaPlugin {
 
         if (config.getBoolean("bstats")) {
             Metrics metrics = new Metrics(this, 11025);
+        }
+    }
+
+    @Override
+    public void onDisable() {
+        List<FakePlayer> copyList = new ArrayList<>(FakePlayer.getFakePlayers());
+        for (FakePlayer player : copyList) {
+            player.removePlayer();
         }
     }
 
@@ -133,6 +152,16 @@ public class Main extends JavaPlugin {
 
                 return;
             }
+        }
+    }
+
+    public static UUID getRandomUUID(String name) {
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(name);
+
+        if (offlinePlayer != null) {
+            return offlinePlayer.getUniqueId();
+        } else {
+            return UUID.randomUUID();
         }
     }
 }

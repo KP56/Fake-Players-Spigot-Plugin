@@ -2,6 +2,7 @@ package me.KP56.FakePlayers.Commands;
 
 import me.KP56.FakePlayers.Action.*;
 import me.KP56.FakePlayers.FakePlayer;
+import me.KP56.FakePlayers.Macros.Macro;
 import me.KP56.FakePlayers.Main;
 import me.KP56.FakePlayers.Utils.Color;
 import org.bukkit.Bukkit;
@@ -11,6 +12,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +32,10 @@ public class FakePlayers implements CommandExecutor {
                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) (Action) &b- makes fake players add a certain action to their list"));
                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) perform &b- makes fake players perform all actions from their list"));
                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) perform (Number) &b- makes fake players perform all actions from their list a certain amount of times"));
+                sender.sendMessage(Color.format("&2> &3/FakePlayers macro save (Fake Player's Name) (Macro's Name) &b- creates a macro file from fake player's action list"));
+                sender.sendMessage(Color.format("&2> &3/FakePlayers macro load (Fake Player's Name) (Macro's Name) &b- loads macro into fake player's action list"));
+                sender.sendMessage(Color.format("&2> &3/FakePlayers macro perform (Fake Player's Name) (Macro's Name) &b- makes fake player perform actions from a macro"));
+                sender.sendMessage(Color.format("&2> &3/FakePlayers macro perform (Fake Player's Name) (Macro's Name) (Amount) &b- makes fake player perform actions from a macro a certain amount of times"));
                 sender.sendMessage(Color.format("&2> &3/FakePlayers action help &b- displays a help page for an action subcommand."));
                 sender.sendMessage(Color.format("&2> &3/FakePlayers list &b- displays a fake player list"));
                 sender.sendMessage(Color.format("&2> &3/FakePlayers reload &b- reloads config.yml"));
@@ -80,6 +86,9 @@ public class FakePlayers implements CommandExecutor {
                         Bukkit.getPluginManager().enablePlugin(Main.getPlugin());
                         sender.sendMessage(Main.getConfigMessage(Main.config, "messages.reload", args));
                         break;
+                    case "macro":
+                        macro(sender, args);
+                        break;
                     case "action":
                         if (args.length < 2) {
                             Bukkit.dispatchCommand(sender, "fakeplayers");
@@ -107,6 +116,8 @@ public class FakePlayers implements CommandExecutor {
                                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) Teleport (X) (Y) (Z) &b- teleports a fake player to specified XYZ coordinates"));
                                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) Attack &b- makes fake player attack the nearest entity"));
                                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) Interact &b- makes fake player right click on the nearest entity"));
+                                sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) InventoryClick (Slot) &b- makes Fake Player click on a certain custom inventory slot"));
+                                sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) InventoryClose &b- makes Fake Player close an inventory"));
                                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) perform &b- makes fake players perform all actions from their list"));
                                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) perform (Number) &b- makes fake players perform all actions from their list a certain amount of times"));
                                 sender.sendMessage(Color.format("&2> &3/FakePlayers action (Name/All) clear &b- removes all fake player's actions"));
@@ -118,6 +129,9 @@ public class FakePlayers implements CommandExecutor {
                             }
                         }
                         break;
+                    default:
+                        Bukkit.dispatchCommand(sender, "fakeplayers");
+                        break;
                 }
             }
         } else {
@@ -128,7 +142,7 @@ public class FakePlayers implements CommandExecutor {
 
     private void summon(CommandSender sender, String name, int number, String[] args) {
         if (number == 1) {
-            if (new FakePlayer(UUID.randomUUID(), name, Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn()) {
+            if (new FakePlayer(Main.getRandomUUID(name), name, Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn()) {
                 sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.success-one", args));
             } else {
                 sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.failed", args));
@@ -144,7 +158,7 @@ public class FakePlayers implements CommandExecutor {
             for (int i = addition; i < number + addition; i++) {
                 final int I = i;
                 Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
-                    new FakePlayer(UUID.randomUUID(), name + (I + 1), Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn();
+                    new FakePlayer(Main.getRandomUUID(name), name + (I + 1), Bukkit.getServer().getWorlds().get(0).getSpawnLocation()).spawn();
                 }, I * Main.config.getInt("tick-delay-between-joins"));
             }
             sender.sendMessage(Main.getConfigMessage(Main.config, "messages.summon.trying-amount", args));
@@ -191,6 +205,78 @@ public class FakePlayers implements CommandExecutor {
             } else {
                 sender.sendMessage(Main.getConfigMessage(Main.config, "messages.disband.failed", args));
             }
+        }
+    }
+
+    private void macro(CommandSender sender, String[] args) {
+        FakePlayer fakePlayer = FakePlayer.getFakePlayer(args[2]);
+        if (fakePlayer != null) {
+            String macro = args[3];
+            if (args.length == 4) {
+                switch (args[1]) {
+                    case "save":
+                        try {
+                            new Macro(fakePlayer.getActions(), macro).save();
+                            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-successful-save", args));
+                        } catch (IOException e) {
+                            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-failed-save", args));
+                            Bukkit.getLogger().warning("Could not save macro: '" + macro + "'.");
+                        }
+                        break;
+                    case "load":
+                        try {
+                            fakePlayer.actions = Macro.loadMacro(macro).getActions();
+                            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-successful-load", args));
+                        } catch (IOException e) {
+                            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-failed-load", args));
+                            Bukkit.getLogger().warning("Could not load macro: '" + macro + "'.");
+                        }
+                        break;
+                    case "perform":
+                        List<Action> actionsCopy = new ArrayList<>(fakePlayer.actions);
+                        new Thread(() -> {
+                            try {
+                                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-successful-load", args));
+                                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-perform", args));
+                                fakePlayer.actions = Macro.loadMacro(macro).getActions();
+                                fakePlayer.perform(1);
+                                fakePlayer.actions = actionsCopy;
+                            } catch (IOException e) {
+                                sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-failed-load", args));
+                                Bukkit.getLogger().warning("Could not load macro: '" + macro + "'.");
+                            }
+                        }).start();
+                        break;
+                    default:
+                        Bukkit.dispatchCommand(sender, "fakeplayers");
+                        break;
+                }
+            } else if (args.length == 5) {
+                if (args[1].equals("perform")) {
+                    try {
+                        List<Action> actionsCopy = new ArrayList<>(fakePlayer.actions);
+                        fakePlayer.actions = Macro.loadMacro(macro).getActions();
+                        try {
+                            fakePlayer.perform(Integer.parseInt(args[4]));
+                        } catch (NumberFormatException e) {
+                            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.incorrect-number", args));
+                        }
+                        fakePlayer.actions = actionsCopy;
+
+                        sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-successful-load", args));
+                        sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-macro-perform", args));
+                    } catch (IOException e) {
+                        sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.macro-failed-load", args));
+                        Bukkit.getLogger().warning("Could not load macro: '" + macro + "'.");
+                    }
+                } else {
+                    Bukkit.dispatchCommand(sender, "fakeplayers");
+                }
+            } else {
+                Bukkit.dispatchCommand(sender, "fakeplayers");
+            }
+        } else {
+            sender.sendMessage(Main.getConfigMessage(Main.config, "messages.macro.invalid-player", args));
         }
     }
 
@@ -290,7 +376,6 @@ public class FakePlayers implements CommandExecutor {
                 player.addAction(new ActionInteract());
                 sender.sendMessage(Main.getConfigMessage(Main.config, "messages.action.action-success", args));
                 break;
-            /*
             case "inventoryclick":
                 if (args.length == 4) {
                     player.addAction(new ActionInventoryClick(Integer.parseInt(args[3])));
@@ -310,7 +395,6 @@ public class FakePlayers implements CommandExecutor {
                 player.addAction(new ActionInventoryClose());
                 sender.sendMessage(Main.getConfigMessage(Main.config, "messages.action.action-success", args));
                 break;
-             */
             case "wait":
                 if (args.length == 4) {
                     player.addAction(new ActionWait(Long.parseLong(args[3])));

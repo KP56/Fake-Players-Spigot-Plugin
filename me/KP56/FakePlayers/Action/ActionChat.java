@@ -15,4 +15,13 @@ public class ActionChat implements Action {
     public void perform(FakePlayer player) {
        Bukkit.getPlayer(player.getName()).chat(message);
     }
+
+    @Override
+    public ActionType getType() {
+        return ActionType.CHAT;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }
