@@ -59,7 +59,7 @@ public class ActionAttack implements Action {
         }
 
         if (closestEntity != null) {
-            p.teleport(p.getLocation().setDirection(player.getLocation().subtract(closestEntity.getLocation()).toVector()));
+            p.teleport(p.getLocation().setDirection(p.getLocation().subtract(closestEntity.getLocation()).toVector()));
 
             Method cPlayerGetHandle = null;
             Method cEntityGetHandle = null;

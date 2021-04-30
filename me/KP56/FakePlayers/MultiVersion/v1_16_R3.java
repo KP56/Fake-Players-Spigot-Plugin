@@ -1,6 +1,7 @@
 package me.KP56.FakePlayers.MultiVersion;
 
 import com.mojang.authlib.GameProfile;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
 import me.KP56.FakePlayers.FakePlayer;
@@ -28,34 +29,36 @@ import java.util.UUID;
 public final class v1_16_R3 {
     public static EntityPlayer spawn(FakePlayer fakePlayer) {
 
+        WorldServer worldServer = ((CraftWorld) Bukkit.getWorlds().get(0)).getHandle();
+
+        MinecraftServer mcServer = ((CraftServer) Bukkit.getServer()).getServer();
+
+        EntityPlayer entityPlayer = createEntityPlayer(fakePlayer.getUUID(), fakePlayer.getName(), worldServer);
+
+        CraftPlayer bukkitPlayer = entityPlayer.getBukkitEntity();
+
         try {
             PlayerPreLoginEvent preLoginEvent = new PlayerPreLoginEvent(fakePlayer.getName(), InetAddress.getByName("127.0.0.1"), fakePlayer.getUUID());
             AsyncPlayerPreLoginEvent asyncPreLoginEvent = new AsyncPlayerPreLoginEvent(fakePlayer.getName(), InetAddress.getByName("127.0.0.1"), fakePlayer.getUUID());
 
-            Bukkit.getPluginManager().callEvent(preLoginEvent);
-
             new Thread(() -> Bukkit.getPluginManager().callEvent(asyncPreLoginEvent)).start();
+            Bukkit.getPluginManager().callEvent(preLoginEvent);
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }
 
-        WorldServer worldServer = ((CraftWorld) fakePlayer.getLocation().getWorld()).getHandle();
-        Location location = fakePlayer.getLocation();
+        mcServer.getPlayerList().a(entityPlayer);
 
-        MinecraftServer mcServer = ((CraftServer) Bukkit.getServer()).getServer();
+        Location loc = bukkitPlayer.getLocation();
 
-        EntityPlayer entityPlayer = createEntityPlayer(fakePlayer.getUUID(), fakePlayer.getName(), location);
-
-        entityPlayer.setLocation(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
+        entityPlayer.setLocation(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
 
         DataWatcher data = entityPlayer.getDataWatcher();
         data.set(DataWatcherRegistry.a.a(16), (byte) 127);
 
         ChatMessage joinMessage = getJoinMessage(entityPlayer);
 
-        Player bukkitPlayer = entityPlayer.getBukkitEntity();
-
-        if (me.KP56.FakePlayers.Main.usesPaper() && Main.isPaperUpdated()) {
+        if (me.KP56.FakePlayers.Main.getPlugin().usesPaper() && Main.getPlugin().isPaperUpdated()) {
             PaperUtils_v1_16_R3.playerInitialSpawnEvent(bukkitPlayer);
         }
 
@@ -72,13 +75,9 @@ public final class v1_16_R3 {
             entityPlayer.playerInteractManager.b(EnumGamemode.SURVIVAL);
         }
 
-        entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.CLIENTBOUND), entityPlayer);
+        entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.SERVERBOUND), entityPlayer);
 
-        entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
-
-        entityPlayer.playerConnection.networkManager.channel.close();
-
-        Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter()), 1);
+        entityPlayer.playerConnection.networkManager.channel = openChannel();
 
         worldServer.addPlayerJoin(entityPlayer);
         mcServer.getPlayerList().players.add(entityPlayer);
@@ -100,15 +99,18 @@ public final class v1_16_R3 {
             e.printStackTrace();
         }
 
-
         PlayerJoinEvent playerJoinEvent;
-        if (me.KP56.FakePlayers.Main.usesPaper() && Main.isPaperUpdated()) {
+        if (me.KP56.FakePlayers.Main.getPlugin().usesPaper() && Main.getPlugin().isPaperUpdated()) {
             playerJoinEvent = PaperUtils_v1_16_R3.paperJoinMessageFormat(entityPlayer, joinMessage);
         } else {
             playerJoinEvent = new PlayerJoinEvent(((CraftServer) Bukkit.getServer()).getPlayer(entityPlayer), CraftChatMessage.fromComponent(joinMessage));
         }
 
         Bukkit.getPluginManager().callEvent(playerJoinEvent);
+
+        entityPlayer.didPlayerJoinEvent = true;
+
+        entityPlayer.playerConnection.networkManager.channel = openChannel();
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendMessage(playerJoinEvent.getJoinMessage());
@@ -117,8 +119,14 @@ public final class v1_16_R3 {
         PlayerResourcePackStatusEvent resourcePackStatusEventAccepted = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.ACCEPTED);
         PlayerResourcePackStatusEvent resourcePackStatusEventSuccessfullyLoaded = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
 
-        Bukkit.getPluginManager().callEvent(resourcePackStatusEventAccepted);
-        Bukkit.getPluginManager().callEvent(resourcePackStatusEventSuccessfullyLoaded);
+        Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
+            bukkitPlayer.setResourcePackStatus(PlayerResourcePackStatusEvent.Status.ACCEPTED);
+            Bukkit.getPluginManager().callEvent(resourcePackStatusEventAccepted);
+        }, 20);
+        Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
+            bukkitPlayer.setResourcePackStatus(PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
+            Bukkit.getPluginManager().callEvent(resourcePackStatusEventSuccessfullyLoaded);
+        }, 40);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             PlayerConnection connection = ((CraftPlayer) player).getHandle().playerConnection;
@@ -131,8 +139,18 @@ public final class v1_16_R3 {
         return entityPlayer;
     }
 
-    private static EntityPlayer createEntityPlayer(UUID uuid, String name, Location location) {
-        WorldServer worldServer = ((CraftWorld) location.getWorld()).getHandle();
+    private static Channel openChannel() {
+        Channel channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
+
+        channel.pipeline().addLast("splitter", new PacketSplitter())
+                .addLast("decoder", new PacketDecoder(EnumProtocolDirection.SERVERBOUND))
+                .addLast("prepender", new PacketPrepender()).addLast("encoder", new PacketEncoder(EnumProtocolDirection.CLIENTBOUND))
+                .addLast("packet_handler", new NetworkManager(EnumProtocolDirection.SERVERBOUND));
+
+        return channel;
+    }
+
+    private static EntityPlayer createEntityPlayer(UUID uuid, String name, WorldServer worldServer) {
         MinecraftServer mcServer = ((CraftServer) Bukkit.getServer()).getServer();
         GameProfile gameProfile = new GameProfile(uuid, name);
 
@@ -154,7 +172,7 @@ public final class v1_16_R3 {
         }
 
         PlayerQuitEvent playerQuitEvent;
-        if (Main.usesPaper() && Main.isPaperUpdated()) {
+        if (Main.getPlugin().usesPaper() && Main.getPlugin().isPaperUpdated()) {
             playerQuitEvent = PaperUtils_v1_16_R3.paperQuitMessageFormat(entityPlayer, craftServer.getPlayer(entityPlayer));
         } else {
             playerQuitEvent = new PlayerQuitEvent(craftServer.getPlayer(entityPlayer), "§e" + entityPlayer.getName() + " left the game");
@@ -164,6 +182,7 @@ public final class v1_16_R3 {
         Bukkit.getPluginManager().callEvent(playerQuitEvent);
 
         entityPlayer.getBukkitEntity().disconnect(playerQuitEvent.getQuitMessage());
+
         if (mcServer.isMainThread()) {
             entityPlayer.playerTick();
         }
@@ -204,6 +223,14 @@ public final class v1_16_R3 {
             connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer));
 
             p.sendMessage(playerQuitEvent.getQuitMessage());
+        }
+
+        try {
+            Method savePlayerFile = PlayerList.class.getDeclaredMethod("savePlayerFile", EntityPlayer.class);
+            savePlayerFile.setAccessible(true);
+            savePlayerFile.invoke(mcServer.getPlayerList(), entityPlayer);
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            e.printStackTrace();
         }
     }
 

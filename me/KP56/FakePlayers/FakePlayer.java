@@ -7,7 +7,6 @@ import me.KP56.FakePlayers.MultiVersion.v1_12_R1;
 import me.KP56.FakePlayers.MultiVersion.v1_16_R3;
 import me.KP56.FakePlayers.MultiVersion.v1_8_R3;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -20,16 +19,13 @@ public class FakePlayer {
 
     private UUID uuid;
     private String name;
-    private Location location;
-
     private Object entityPlayer;
 
     public List<Action> actions = new ArrayList<>();
 
-    public FakePlayer(UUID uuid, String name, Location location) {
+    public FakePlayer(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
-        this.location = location;
     }
 
     public static FakePlayer getFakePlayer(UUID uuid) {
@@ -71,11 +67,11 @@ public class FakePlayer {
             }
         }
 
-        if (Main.getVersion() == Version.v1_16_R3) {
+        if (Main.getPlugin().getVersion() == Version.v1_16_R3) {
             entityPlayer = v1_16_R3.spawn(this);
-        } else if (Main.getVersion() == Version.v1_12_R1) {
+        } else if (Main.getPlugin().getVersion() == Version.v1_12_R1) {
             entityPlayer = v1_12_R1.spawn(this);
-        } else if (Main.getVersion() == Version.v1_8_R3) {
+        } else if (Main.getPlugin().getVersion() == Version.v1_8_R3) {
             entityPlayer = v1_8_R3.spawn(this);
         }
 
@@ -98,17 +94,13 @@ public class FakePlayer {
     }
 
     public void removePlayer() {
-        if (Main.getVersion() == Version.v1_16_R3) {
+        if (Main.getPlugin().getVersion() == Version.v1_16_R3) {
             v1_16_R3.removePlayer(this);
-        } else if (Main.getVersion() == Version.v1_12_R1) {
+        } else if (Main.getPlugin().getVersion() == Version.v1_12_R1) {
             v1_12_R1.removePlayer(this);
-        } else if (Main.getVersion() == Version.v1_8_R3) {
+        } else if (Main.getPlugin().getVersion() == Version.v1_8_R3) {
             v1_8_R3.removePlayer(this);
         }
-    }
-
-    public Location getLocation() {
-        return location;
     }
 
     public void addAction(Action action) {
@@ -134,5 +126,9 @@ public class FakePlayer {
 
     public List<Action> getActions() {
         return actions;
+    }
+
+    public static boolean summon(String name) {
+        return new FakePlayer(Main.getRandomUUID(name), name).spawn();
     }
 }

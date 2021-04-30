@@ -5,6 +5,12 @@ tick-delay-between-joins: 4
 
 prefix: "&2&lFake Players&7 »&r"
 
+bungeecord:
+  enabled: false
+  ip: "127.0.0.1"
+  fakeplayers-port: 5721
+  bungeecord-fakeplayers-port: 5723
+
 messages:
   no-permissions: "&cYou do not have permissions to execute that command."
   summon:

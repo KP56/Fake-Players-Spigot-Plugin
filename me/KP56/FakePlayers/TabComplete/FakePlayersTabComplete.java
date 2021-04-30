@@ -14,10 +14,17 @@ public class FakePlayersTabComplete implements TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String label, @NotNull String[] args) {
         List<String> subCommands = new ArrayList<>();
 
-        if (args[0].equals("action")) {
-            if (args.length == 1) {
-                subCommands.add("help");
-            } else if (args.length == 2) {
+        if (args.length == 1) {
+            subCommands.add("summon");
+            subCommands.add("disband");
+            subCommands.add("chat");
+            subCommands.add("action");
+            subCommands.add("macro");
+            subCommands.add("list");
+            subCommands.add("reload");
+            return subCommands;
+        } else if (args.length == 3) {
+            if (args[0].equals("action")) {
                 subCommands.add("chat");
                 subCommands.add("teleport");
                 subCommands.add("attack");
@@ -26,21 +33,17 @@ public class FakePlayersTabComplete implements TabCompleter {
                 subCommands.add("inventoryclose");
                 subCommands.add("perform");
                 subCommands.add("clear");
+                return subCommands;
             }
-        } else {
-            subCommands.add("summon");
-            subCommands.add("disband");
-            subCommands.add("chat");
-            subCommands.add("action");
+        } else if (args.length == 2) {
+            if (args[0].equals("macro")) {
+                subCommands.add("save");
+                subCommands.add("load");
+                subCommands.add("perform");
+                return subCommands;
+            }
         }
 
-        subCommands.add("list");
-        subCommands.add("reload");
-        subCommands.add("macro");
-        subCommands.add("macro save");
-        subCommands.add("macro load");
-        subCommands.add("macro perform");
-
-        return subCommands;
+        return null;
     }
 }

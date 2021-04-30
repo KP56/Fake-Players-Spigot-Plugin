@@ -1,7 +1,11 @@
 package me.KP56.FakePlayers.Action;
 
 import me.KP56.FakePlayers.FakePlayer;
+import me.KP56.FakePlayers.Main;
+import me.KP56.FakePlayers.Socket.FakePlayersSocket;
 import org.bukkit.Bukkit;
+
+import java.io.IOException;
 
 public class ActionChat implements Action {
 
@@ -13,7 +17,12 @@ public class ActionChat implements Action {
 
     @Override
     public void perform(FakePlayer player) {
-       Bukkit.getPlayer(player.getName()).chat(message);
+        try {
+            FakePlayersSocket.fakePlayersSocket.send(Main.getPlugin().config.getString("bungeecord.ip"), Main.getPlugin().config.getInt("bungeecord.bungeecord-fakeplayers-port"), "chat " + player.getName() + " " + message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Bukkit.getPlayer(player.getName()).chat(message);
     }
 
     @Override

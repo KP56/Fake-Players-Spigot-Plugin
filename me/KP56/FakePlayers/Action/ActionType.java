@@ -7,5 +7,9 @@ public enum ActionType {
     INVENTORY_CLICK,
     INVENTORY_CLOSE,
     TELEPORT,
-    WAIT;
+    WAIT,
+    MOUNT,
+    DISMOUNT,
+    BLOCK_PLACE,
+    BLOCK_DESTROY;
 }

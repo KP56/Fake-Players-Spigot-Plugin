@@ -1,14 +1,14 @@
 package me.KP56.FakePlayers.Action;
 
 import me.KP56.FakePlayers.FakePlayer;
+import me.KP56.FakePlayers.Reflection.Reflection;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 
 import java.util.List;
 
-public class ActionInteract implements Action {
+public class ActionMount implements Action {
     @Override
     public void perform(FakePlayer player) {
         Player p = Bukkit.getPlayer(player.getUUID());
@@ -29,13 +29,12 @@ public class ActionInteract implements Action {
         if (closestEntity != null) {
             p.teleport(p.getLocation().setDirection(p.getLocation().subtract(closestEntity.getLocation()).toVector()));
 
-            PlayerInteractEntityEvent e = new PlayerInteractEntityEvent(p, closestEntity);
-            Bukkit.getPluginManager().callEvent(e);
+            closestEntity.setPassenger(p);
         }
     }
 
     @Override
     public ActionType getType() {
-        return ActionType.INTERACT;
+        return ActionType.MOUNT;
     }
 }
