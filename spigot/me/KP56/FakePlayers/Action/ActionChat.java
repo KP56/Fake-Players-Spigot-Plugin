@@ -17,11 +17,7 @@ public class ActionChat implements Action {
 
     @Override
     public void perform(FakePlayer player) {
-        try {
-            FakePlayersSocket.fakePlayersSocket.send(Main.getPlugin().config.getString("bungeecord.ip"), Main.getPlugin().config.getInt("bungeecord.bungeecord-fakeplayers-port"), "chat " + player.getName() + " " + message);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        FakePlayersSocket.fakePlayersSocket.send(Main.getPlugin().config.getString("bungeecord.ip"), Main.getPlugin().config.getInt("bungeecord.bungeecord-fakeplayers-port"), "chat " + player.getName() + " " + message);
         Bukkit.getPlayer(player.getName()).chat(message);
     }
 

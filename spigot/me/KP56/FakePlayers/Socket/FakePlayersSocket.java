@@ -49,12 +49,18 @@ public class FakePlayersSocket {
         }
     }
 
-    public void send(String host, int port, String message) throws IOException {
-        Socket clientSocket = new Socket(host, port);
-        DataOutputStream dataOutputStream = new DataOutputStream(clientSocket.getOutputStream());
-        dataOutputStream.writeUTF(message);
-        dataOutputStream.flush();
-        dataOutputStream.close();
-        clientSocket.close();
+    public void send(String host, int port, String message) {
+        new Thread(() -> {
+            try {
+                Socket clientSocket = new Socket(host, port);
+                DataOutputStream dataOutputStream = new DataOutputStream(clientSocket.getOutputStream());
+                dataOutputStream.writeUTF(message);
+                dataOutputStream.flush();
+                dataOutputStream.close();
+                clientSocket.close();
+            } catch (IOException e) {
+                Bukkit.getLogger().warning("[FakePlayers] Could not connect to the server.");
+            }
+        }).start();
     }
 }

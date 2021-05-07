@@ -176,11 +176,7 @@ public class FakePlayers implements CommandExecutor {
     private void chat(CommandSender sender, String name, String message, String[] args) {
         if (name.equalsIgnoreCase("All")) {
             for (FakePlayer player : FakePlayer.getFakePlayers()) {
-                try {
-                    FakePlayersSocket.fakePlayersSocket.send(Main.getPlugin().config.getString("bungeecord.ip"), Main.getPlugin().config.getInt("bungeecord.bungeecord-fakeplayers-port"), "chat " + player.getName() + " " + message);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                FakePlayersSocket.fakePlayersSocket.send(Main.getPlugin().config.getString("bungeecord.ip"), Main.getPlugin().config.getInt("bungeecord.bungeecord-fakeplayers-port"), "chat " + player.getName() + " " + message);
 
                 Bukkit.getPlayer(player.getName()).chat(message);
             }
@@ -188,11 +184,7 @@ public class FakePlayers implements CommandExecutor {
             Player player = Bukkit.getPlayer(name);
             if (player != null) {
                 if (FakePlayer.getFakePlayer(name) != null) {
-                    try {
-                        FakePlayersSocket.fakePlayersSocket.send(Main.getPlugin().config.getString("bungeecord.ip"), Main.getPlugin().config.getInt("bungeecord.bungeecord-fakeplayers-port"), "chat " + player.getName() + " " + message);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    FakePlayersSocket.fakePlayersSocket.send(Main.getPlugin().config.getString("bungeecord.ip"), Main.getPlugin().config.getInt("bungeecord.bungeecord-fakeplayers-port"), "chat " + player.getName() + " " + message);
                     player.chat(message);
                 } else {
                     sender.sendMessage(Main.getConfigMessage(Main.getPlugin().config, "messages.chat.not-a-fake-player", args));

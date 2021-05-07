@@ -1,0 +1,7 @@
+bungee-fakeplayers-port: 5723
+
+servers:
+  lobby:
+    fakeplayers-port: 5721
+  survival:
+    fakeplayers-port: 5722
