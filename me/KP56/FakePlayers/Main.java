@@ -26,8 +26,11 @@ public class Main extends JavaPlugin {
     private static final int SPIGOT_RESOURCE_ID = 91163;
     private static Main plugin;
     public FileConfiguration config;
+
+    private boolean usesCraftBukkit = false;
     private boolean usesPaper = false;
     private boolean updatedPaper = false;
+    private boolean usesProtocolLib = false;
     private Version version = Version.valueOf(Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3]);
 
     public static Main getPlugin() {
@@ -83,6 +86,36 @@ public class Main extends JavaPlugin {
         return version;
     }
 
+    private void checkForClasses() {
+        try {
+            usesPaper = Class.forName("com.destroystokyo.paper.VersionHistoryManager$VersionData") != null;
+
+            if (usesPaper) {
+                Bukkit.getLogger().info("Paper detected.");
+            }
+        } catch (ClassNotFoundException ignored) {
+
+        }
+
+        try {
+            updatedPaper = Class.forName("net.kyori.adventure.text.ComponentLike") != null;
+        } catch (ClassNotFoundException ignored) {
+
+        }
+
+        try {
+            usesCraftBukkit = Class.forName("org.spigotmc.SpigotConfig") == null;
+        } catch (ClassNotFoundException ignored) {
+            usesCraftBukkit = true;
+        }
+
+        try {
+            this.usesProtocolLib = (Class.forName("com.comphenix.protocol.ProtocolLib") != null);
+        } catch (ClassNotFoundException ignored) {
+
+        }
+    }
+
     @Override
     public void onEnable() {
 
@@ -112,22 +145,14 @@ public class Main extends JavaPlugin {
 
         plugin = this;
 
-        try {
-            usesPaper = Class.forName("com.destroystokyo.paper.VersionHistoryManager$VersionData") != null;
-            updatedPaper = Class.forName("net.kyori.adventure.text.ComponentLike") != null;
-            if (usesPaper) {
-                Bukkit.getLogger().info("Paper detected.");
-            }
-        } catch (ClassNotFoundException ignored) {
-
-        }
+        checkForClasses();
 
         this.saveDefaultConfig();
         config = this.getConfig();
 
         validateConfig();
 
-        if (config.getBoolean("update-notifications")) {
+        if (config.getBoolean("update-notifications") && !usesCraftBukkit) {
             UpdateChecker.init(this, SPIGOT_RESOURCE_ID)
                     .setDownloadLink(SPIGOT_RESOURCE_ID)
                     .setNotifyByPermissionOnJoin("fakeplayers.notify")
@@ -135,7 +160,6 @@ public class Main extends JavaPlugin {
                     .checkEveryXHours(6)
                     .checkNow();
         }
-
 
         if (config.getBoolean("bstats")) {
             Metrics metrics = new Metrics(this, 11025);
@@ -169,6 +193,10 @@ public class Main extends JavaPlugin {
             System.out.println("Starting socket...");
             FakePlayersSocket.fakePlayersSocket.start(config.getString("bungeecord.ip"), config.getInt("bungeecord.fakeplayers-port"));
         }
+    }
+
+    public boolean usesCraftBukkit() {
+        return usesCraftBukkit;
     }
 
     @Override
@@ -206,5 +234,9 @@ public class Main extends JavaPlugin {
                 return;
             }
         }
+    }
+
+    public boolean usesProtocolLib() {
+        return usesProtocolLib;
     }
 }

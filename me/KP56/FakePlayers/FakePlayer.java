@@ -6,9 +6,12 @@ import me.KP56.FakePlayers.MultiVersion.Version;
 import me.KP56.FakePlayers.MultiVersion.v1_12_R1;
 import me.KP56.FakePlayers.MultiVersion.v1_16_R3;
 import me.KP56.FakePlayers.MultiVersion.v1_8_R3;
+import me.KP56.FakePlayers.PluginUtils.ProtocolLibUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.HandlerList;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -16,12 +19,10 @@ import java.util.UUID;
 public class FakePlayer {
 
     private static List<FakePlayer> fakePlayers = new ArrayList<>();
-
+    public List<Action> actions = new ArrayList<>();
     private UUID uuid;
     private String name;
     private Object entityPlayer;
-
-    public List<Action> actions = new ArrayList<>();
 
     public FakePlayer(UUID uuid, String name) {
         this.uuid = uuid;
@@ -56,7 +57,17 @@ public class FakePlayer {
         return fakePlayers;
     }
 
+    public static boolean summon(String name) {
+        return new FakePlayer(Main.getRandomUUID(name), name).spawn();
+    }
+
     public boolean spawn() {
+
+        List<HandlerList> copy = new ArrayList<>(HandlerList.getHandlerLists());
+        if (Main.getPlugin().usesProtocolLib()) {
+            ProtocolLibUtils.unregisterHandlers();
+        }
+
         if (name.length() >= 16) {
             return false;
         }
@@ -75,8 +86,17 @@ public class FakePlayer {
             entityPlayer = v1_8_R3.spawn(this);
         }
 
-
         fakePlayers.add(this);
+
+        if (Main.getPlugin().usesProtocolLib()) {
+            try {
+                Field field = HandlerList.class.getDeclaredField("allLists");
+                field.setAccessible(true);
+                field.set(null, copy);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
 
         return true;
     }
@@ -126,9 +146,5 @@ public class FakePlayer {
 
     public List<Action> getActions() {
         return actions;
-    }
-
-    public static boolean summon(String name) {
-        return new FakePlayer(Main.getRandomUUID(name), name).spawn();
     }
 }

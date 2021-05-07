@@ -12,6 +12,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_12_R1.CraftServer;
+import org.bukkit.craftbukkit.v1_12_R1.CraftWorld;
 import org.bukkit.craftbukkit.v1_12_R1.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.*;
@@ -27,7 +28,7 @@ import java.util.UUID;
 public final class v1_12_R1 {
     public static EntityPlayer spawn(FakePlayer fakePlayer) {
 
-        WorldServer worldServer = (WorldServer) ((EntityPlayer) fakePlayer.getEntityPlayer()).getWorld();
+        WorldServer worldServer = ((CraftWorld) Bukkit.getWorlds().get(0)).getHandle();
 
         MinecraftServer mcServer = ((CraftServer) Bukkit.getServer()).getServer();
 
@@ -75,7 +76,8 @@ public final class v1_12_R1 {
 
         entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.SERVERBOUND), entityPlayer);
 
-        entityPlayer.playerConnection.networkManager.channel = openChannel();
+        entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
+        entityPlayer.playerConnection.networkManager.channel.close();
 
         worldServer.getPlayerChunkMap().addPlayer(entityPlayer);
         mcServer.getPlayerList().players.add(entityPlayer);
@@ -104,10 +106,12 @@ public final class v1_12_R1 {
 
         Bukkit.getPluginManager().callEvent(playerJoinEvent);
 
-        entityPlayer.playerConnection.networkManager.channel = openChannel();
+        String finalJoinMessage = playerJoinEvent.getJoinMessage();
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            p.sendMessage(playerJoinEvent.getJoinMessage());
+        if (finalJoinMessage != null && !finalJoinMessage.equals("")) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.sendMessage(finalJoinMessage);
+            }
         }
 
         PlayerResourcePackStatusEvent resourcePackStatusEventAccepted = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.ACCEPTED);
@@ -127,17 +131,6 @@ public final class v1_12_R1 {
         Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(), entityPlayer::playerTick, 1, 1);
 
         return entityPlayer;
-    }
-
-    private static Channel openChannel() {
-        Channel channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
-
-        channel.pipeline().addLast("splitter", new PacketSplitter())
-                .addLast("decoder", new PacketDecoder(EnumProtocolDirection.SERVERBOUND))
-                .addLast("prepender", new PacketPrepender()).addLast("encoder", new PacketEncoder(EnumProtocolDirection.CLIENTBOUND))
-                .addLast("packet_handler", new NetworkManager(EnumProtocolDirection.SERVERBOUND));
-
-        return channel;
     }
 
     private static EntityPlayer createEntityPlayer(UUID uuid, String name, WorldServer worldServer) {
@@ -193,12 +186,16 @@ public final class v1_12_R1 {
 
         FakePlayer.getFakePlayers().remove(player);
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            PlayerConnection connection = ((CraftPlayer) p).getHandle().playerConnection;
-            connection.sendPacket(new PacketPlayOutEntityDestroy(entityPlayer.getId()));
-            connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer));
+        String finalQuitMessage = playerQuitEvent.getQuitMessage();
 
-            p.sendMessage(playerQuitEvent.getQuitMessage());
+        if (finalQuitMessage != null && !finalQuitMessage.equals("")) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                PlayerConnection connection = ((CraftPlayer) p).getHandle().playerConnection;
+                connection.sendPacket(new PacketPlayOutEntityDestroy(entityPlayer.getId()));
+                connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer));
+
+                p.sendMessage(playerQuitEvent.getQuitMessage());
+            }
         }
 
         try {

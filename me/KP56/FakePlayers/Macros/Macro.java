@@ -51,6 +51,10 @@ public class Macro {
                     Location teleportLocation = teleport.getTeleportLocation();
                     bw.write("TELEPORT " + teleportLocation.getBlockX() + " " + teleportLocation.getBlockY() + " " + teleportLocation.getBlockZ());
                 }
+            } else if (action.getType() == ActionType.MOUNT) {
+                bw.write("MOUNT");
+            } else if (action.getType() == ActionType.DISMOUNT) {
+                bw.write("DISMOUNT");
             } else {
                 bw.write("WAIT " + ((ActionWait) action).getDelay());
             }
@@ -141,6 +145,12 @@ public class Macro {
                     } catch (NumberFormatException e) {
                         throw new RuntimeException("Function WAIT (TIME) accepts INTEGER (Milliseconds) as its argument. Line: " + i + "(" + macroFile.getPath() + ")");
                     }
+                }
+            } else if (type == ActionType.DISMOUNT) {
+                if (references.length > 1) {
+                    throw new RuntimeException("Function DISMOUNT accepts no arguments. Line: " + i + "(" + macroFile.getPath() + ")");
+                } else {
+                    actions.add(new ActionDismount());
                 }
             } else {
                 throw new RuntimeException("Could not find function '" + references[0] + "'.");

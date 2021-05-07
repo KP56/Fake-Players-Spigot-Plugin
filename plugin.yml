@@ -1,9 +1,11 @@
 name: FakePlayers
 main: me.KP56.FakePlayers.Main
-version: 1.7
+version: 2.1
 author: KP56
 
 api-version: 1.16
+
+softdepend: [ProtocolLib]
 
 commands:
   fakeplayers:

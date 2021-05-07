@@ -11,7 +11,11 @@ public class DeathListener implements Listener {
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
         if (FakePlayer.getFakePlayer(e.getEntity().getUniqueId()) != null) {
-            Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> e.getEntity().spigot().respawn(), 20);
+            if (!Main.getPlugin().usesCraftBukkit()) {
+                Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> e.getEntity().spigot().respawn(), 20);
+            } else {
+                Bukkit.getLogger().warning("Auto respawn feature is not supported, when using CraftBukkit.");
+            }
         }
     }
 }

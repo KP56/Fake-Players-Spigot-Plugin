@@ -7,6 +7,7 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import me.KP56.FakePlayers.FakePlayer;
 import me.KP56.FakePlayers.Main;
 import me.KP56.FakePlayers.Paper.PaperUtils_v1_16_R3;
+import me.KP56.FakePlayers.Spigot.SpigotUtils;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -75,9 +76,10 @@ public final class v1_16_R3 {
             entityPlayer.playerInteractManager.b(EnumGamemode.SURVIVAL);
         }
 
-        entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.SERVERBOUND), entityPlayer);
+        entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.CLIENTBOUND), entityPlayer);
 
-        entityPlayer.playerConnection.networkManager.channel = openChannel();
+        entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
+        entityPlayer.playerConnection.networkManager.channel.close();
 
         worldServer.addPlayerJoin(entityPlayer);
         mcServer.getPlayerList().players.add(entityPlayer);
@@ -89,12 +91,14 @@ public final class v1_16_R3 {
             Method jPut = valJ.getClass().getDeclaredMethod("put", Object.class, Object.class);
             jPut.invoke(valJ, bukkitPlayer.getUniqueId(), entityPlayer);
 
-            Field playersByName = PlayerList.class.getDeclaredField("playersByName");
-            playersByName.setAccessible(true);
-            Object valPlayersByName = playersByName.get(mcServer.getPlayerList());
+            if (!Main.getPlugin().usesCraftBukkit()) {
+                Field playersByName = PlayerList.class.getDeclaredField("playersByName");
+                playersByName.setAccessible(true);
+                Object valPlayersByName = playersByName.get(mcServer.getPlayerList());
 
-            Method playersByNamePut = valPlayersByName.getClass().getDeclaredMethod("put", Object.class, Object.class);
-            playersByNamePut.invoke(valPlayersByName, entityPlayer.getName().toLowerCase(Locale.ROOT), entityPlayer);
+                Method playersByNamePut = valPlayersByName.getClass().getDeclaredMethod("put", Object.class, Object.class);
+                playersByNamePut.invoke(valPlayersByName, entityPlayer.getName().toLowerCase(Locale.ROOT), entityPlayer);
+            }
         } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             e.printStackTrace();
         }
@@ -108,23 +112,34 @@ public final class v1_16_R3 {
 
         Bukkit.getPluginManager().callEvent(playerJoinEvent);
 
-        entityPlayer.didPlayerJoinEvent = true;
+        try {
+            Field didPlayerJoinEvent = entityPlayer.getClass().getDeclaredField("didPlayerJoinEvent");
+            didPlayerJoinEvent.set(entityPlayer, true);
+        } catch (NoSuchFieldException | IllegalAccessException ignored) {
 
-        entityPlayer.playerConnection.networkManager.channel = openChannel();
+        }
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            p.sendMessage(playerJoinEvent.getJoinMessage());
+        String finalJoinMessage = playerJoinEvent.getJoinMessage();
+
+        if (finalJoinMessage != null && !finalJoinMessage.equals("")) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.sendMessage(finalJoinMessage);
+            }
         }
 
         PlayerResourcePackStatusEvent resourcePackStatusEventAccepted = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.ACCEPTED);
         PlayerResourcePackStatusEvent resourcePackStatusEventSuccessfullyLoaded = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
-            bukkitPlayer.setResourcePackStatus(PlayerResourcePackStatusEvent.Status.ACCEPTED);
+            if (!Main.getPlugin().usesCraftBukkit()) {
+                SpigotUtils.setResourcePackStatus(bukkitPlayer, PlayerResourcePackStatusEvent.Status.ACCEPTED);
+            }
             Bukkit.getPluginManager().callEvent(resourcePackStatusEventAccepted);
         }, 20);
         Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
-            bukkitPlayer.setResourcePackStatus(PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
+            if (!Main.getPlugin().usesCraftBukkit()) {
+                SpigotUtils.setResourcePackStatus(bukkitPlayer, PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
+            }
             Bukkit.getPluginManager().callEvent(resourcePackStatusEventSuccessfullyLoaded);
         }, 40);
 
@@ -137,17 +152,6 @@ public final class v1_16_R3 {
         Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(), entityPlayer::playerTick, 1, 1);
 
         return entityPlayer;
-    }
-
-    private static Channel openChannel() {
-        Channel channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
-
-        channel.pipeline().addLast("splitter", new PacketSplitter())
-                .addLast("decoder", new PacketDecoder(EnumProtocolDirection.SERVERBOUND))
-                .addLast("prepender", new PacketPrepender()).addLast("encoder", new PacketEncoder(EnumProtocolDirection.CLIENTBOUND))
-                .addLast("packet_handler", new NetworkManager(EnumProtocolDirection.SERVERBOUND));
-
-        return channel;
     }
 
     private static EntityPlayer createEntityPlayer(UUID uuid, String name, WorldServer worldServer) {
@@ -217,12 +221,16 @@ public final class v1_16_R3 {
 
         FakePlayer.getFakePlayers().remove(player);
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            PlayerConnection connection = ((CraftPlayer) p).getHandle().playerConnection;
-            connection.sendPacket(new PacketPlayOutEntityDestroy(entityPlayer.getId()));
-            connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer));
+        String finalQuitMessage = playerQuitEvent.getQuitMessage();
 
-            p.sendMessage(playerQuitEvent.getQuitMessage());
+        if (finalQuitMessage != null && !finalQuitMessage.equals("")) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                PlayerConnection connection = ((CraftPlayer) p).getHandle().playerConnection;
+                connection.sendPacket(new PacketPlayOutEntityDestroy(entityPlayer.getId()));
+                connection.sendPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer));
+
+                p.sendMessage(playerQuitEvent.getQuitMessage());
+            }
         }
 
         try {
