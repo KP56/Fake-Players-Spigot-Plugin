@@ -7,10 +7,13 @@ import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.event.ServerConnectEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.event.EventHandler;
+import net.md_5.bungee.netty.ChannelWrapper;
+
+import java.lang.reflect.Field;
 
 public class ServerConnectListener implements Listener {
     @EventHandler
-    public void onServerConnect(ServerConnectEvent e) {
+    public void onServerConnect(ServerConnectEvent e) throws NoSuchFieldException, IllegalAccessException {
         String playerName = e.getPlayer().getName();
 
         if (Main.getMain().isFakePlayer(playerName)) {
@@ -18,7 +21,11 @@ public class ServerConnectListener implements Listener {
                 e.setCancelled(true);
 
                 ServerConnection serverConnection = (ServerConnection) e.getPlayer().getServer();
-                ServerConnection target = new ServerConnection(((UserConnection) e.getPlayer()).getCh(), (BungeeServerInfo) e.getTarget());
+
+                Field chWrapper = UserConnection.class.getDeclaredField("ch");
+                chWrapper.setAccessible(true);
+
+                ServerConnection target = new ServerConnection((ChannelWrapper) chWrapper.get(e.getPlayer()), (BungeeServerInfo) e.getTarget());
                 UserConnection fakePlayer = (UserConnection) e.getPlayer();
 
                 String ip = e.getPlayer().getServer().getAddress().toString();

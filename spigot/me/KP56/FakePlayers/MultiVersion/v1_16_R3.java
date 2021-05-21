@@ -1,7 +1,6 @@
 package me.KP56.FakePlayers.MultiVersion;
 
 import com.mojang.authlib.GameProfile;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
 import me.KP56.FakePlayers.FakePlayer;
@@ -37,6 +36,11 @@ public final class v1_16_R3 {
         EntityPlayer entityPlayer = createEntityPlayer(fakePlayer.getUUID(), fakePlayer.getName(), worldServer);
 
         CraftPlayer bukkitPlayer = entityPlayer.getBukkitEntity();
+
+        entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.CLIENTBOUND), entityPlayer);
+
+        entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
+        entityPlayer.playerConnection.networkManager.channel.close();
 
         try {
             PlayerPreLoginEvent preLoginEvent = new PlayerPreLoginEvent(fakePlayer.getName(), InetAddress.getByName("127.0.0.1"), fakePlayer.getUUID());
@@ -75,11 +79,6 @@ public final class v1_16_R3 {
         } else if (gamemode == GameMode.SPECTATOR) {
             entityPlayer.playerInteractManager.b(EnumGamemode.SURVIVAL);
         }
-
-        entityPlayer.playerConnection = new PlayerConnection(mcServer, new NetworkManager(EnumProtocolDirection.CLIENTBOUND), entityPlayer);
-
-        entityPlayer.playerConnection.networkManager.channel = new EmbeddedChannel(new ChannelInboundHandlerAdapter());
-        entityPlayer.playerConnection.networkManager.channel.close();
 
         worldServer.addPlayerJoin(entityPlayer);
         mcServer.getPlayerList().players.add(entityPlayer);
@@ -131,13 +130,13 @@ public final class v1_16_R3 {
         PlayerResourcePackStatusEvent resourcePackStatusEventSuccessfullyLoaded = new PlayerResourcePackStatusEvent(bukkitPlayer, PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
-            if (!Main.getPlugin().usesCraftBukkit()) {
+            if (Main.getPlugin().usesPaper()) {
                 SpigotUtils.setResourcePackStatus(bukkitPlayer, PlayerResourcePackStatusEvent.Status.ACCEPTED);
             }
             Bukkit.getPluginManager().callEvent(resourcePackStatusEventAccepted);
         }, 20);
         Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
-            if (!Main.getPlugin().usesCraftBukkit()) {
+            if (Main.getPlugin().usesPaper()) {
                 SpigotUtils.setResourcePackStatus(bukkitPlayer, PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED);
             }
             Bukkit.getPluginManager().callEvent(resourcePackStatusEventSuccessfullyLoaded);

@@ -1,6 +1,7 @@
 package me.KP56.FakePlayers.BungeeCord.Socket;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
@@ -71,7 +72,7 @@ public class FakeSocketChannel extends SocketChannel {
 
     @Override
     public SocketAddress getRemoteAddress() throws IOException {
-        return null;
+        return new InetSocketAddress("127.0.0.1", 25565);
     }
 
     @Override

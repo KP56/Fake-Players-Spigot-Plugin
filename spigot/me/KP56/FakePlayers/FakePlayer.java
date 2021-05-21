@@ -6,7 +6,7 @@ import me.KP56.FakePlayers.MultiVersion.Version;
 import me.KP56.FakePlayers.MultiVersion.v1_12_R1;
 import me.KP56.FakePlayers.MultiVersion.v1_16_R3;
 import me.KP56.FakePlayers.MultiVersion.v1_8_R3;
-import me.KP56.FakePlayers.PluginUtils.ProtocolLibUtils;
+import me.KP56.FakePlayers.PluginUtils.*;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -68,6 +68,26 @@ public class FakePlayer {
             ProtocolLibUtils.unregisterHandlers();
         }
 
+        if (Main.getPlugin().usesFastLogin()) {
+            FastLoginUtils.unregisterHandlers();
+        }
+
+        if (Main.getPlugin().usesAuthMe()) {
+            AuthMeUtils.unregisterHandlers();
+        }
+
+        if (Main.getPlugin().usesHamsterAPI()) {
+            HamsterAPIUtils.unregisterHandlers();
+        }
+
+        if (Main.getPlugin().usesNexEngine()) {
+            NexEngineUtils.unregisterHandlers();
+        }
+
+        if (Main.getPlugin().usesCustomDisplay()) {
+            CustomDisplayUtils.unregisterHandlers();
+        }
+
         if (name.length() >= 16) {
             return false;
         }
@@ -88,7 +108,8 @@ public class FakePlayer {
 
         fakePlayers.add(this);
 
-        if (Main.getPlugin().usesProtocolLib()) {
+        if (Main.getPlugin().usesProtocolLib() || Main.getPlugin().usesFastLogin() || Main.getPlugin().usesAuthMe() ||
+                Main.getPlugin().usesHamsterAPI() || Main.getPlugin().usesNexEngine() || Main.getPlugin().usesCustomDisplay()) {
             try {
                 Field field = HandlerList.class.getDeclaredField("allLists");
                 field.setAccessible(true);

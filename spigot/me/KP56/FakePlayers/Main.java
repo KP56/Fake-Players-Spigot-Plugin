@@ -31,6 +31,12 @@ public class Main extends JavaPlugin {
     private boolean usesPaper = false;
     private boolean updatedPaper = false;
     private boolean usesProtocolLib = false;
+    private boolean usesFastLogin = false;
+    private boolean usesAuthMe = false;
+    private boolean usesHamsterAPI = false;
+    private boolean usesNexEngine = false;
+    private boolean usesCustomDisplay = false;
+
     private Version version = Version.valueOf(Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3]);
 
     public static Main getPlugin() {
@@ -110,7 +116,37 @@ public class Main extends JavaPlugin {
         }
 
         try {
-            this.usesProtocolLib = (Class.forName("com.comphenix.protocol.ProtocolLib") != null);
+            this.usesProtocolLib = Class.forName("com.comphenix.protocol.ProtocolLib") != null;
+        } catch (ClassNotFoundException ignored) {
+
+        }
+
+        try {
+            this.usesFastLogin = Class.forName("com.github.games647.fastlogin.bukkit.FastLoginBukkit") != null;
+        } catch (ClassNotFoundException ignored) {
+
+        }
+
+        try {
+            this.usesHamsterAPI = Class.forName("dev._2lstudios.hamsterapi.HamsterAPI") != null;
+        } catch (ClassNotFoundException ignored) {
+
+        }
+
+        try {
+            this.usesAuthMe = Class.forName("fr.xephi.authme.AuthMe") != null;
+        } catch (ClassNotFoundException ignored) {
+
+        }
+
+        try {
+            this.usesNexEngine = Class.forName("su.nexmedia.engine.NexPlugin") != null;
+        } catch (ClassNotFoundException ignored) {
+
+        }
+
+        try {
+            this.usesCustomDisplay = Class.forName("com.daxton.customdisplay.CustomDisplay") != null;
         } catch (ClassNotFoundException ignored) {
 
         }
@@ -206,7 +242,7 @@ public class Main extends JavaPlugin {
             BufferedWriter myWriter = new BufferedWriter(new FileWriter("plugins/FakePlayers/cache/cache$1.fpcache"));
 
             for (FakePlayer player : copyList) {
-                myWriter.write(player.getName());
+                myWriter.write(player.getName() + "\n");
 
                 player.removePlayer();
             }
@@ -238,5 +274,25 @@ public class Main extends JavaPlugin {
 
     public boolean usesProtocolLib() {
         return usesProtocolLib;
+    }
+
+    public boolean usesFastLogin() {
+        return usesFastLogin;
+    }
+
+    public boolean usesAuthMe() {
+        return usesAuthMe;
+    }
+
+    public boolean usesHamsterAPI() {
+        return usesHamsterAPI;
+    }
+
+    public boolean usesNexEngine() {
+        return usesNexEngine;
+    }
+
+    public boolean usesCustomDisplay() {
+        return usesCustomDisplay;
     }
 }

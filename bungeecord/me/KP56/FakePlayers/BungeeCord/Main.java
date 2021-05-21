@@ -1,5 +1,6 @@
 package me.KP56.FakePlayers.BungeeCord;
 
+import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import me.KP56.FakePlayers.BungeeCord.Listeners.CommandListener;
@@ -7,12 +8,15 @@ import me.KP56.FakePlayers.BungeeCord.Listeners.ServerConnectListener;
 import me.KP56.FakePlayers.BungeeCord.Socket.FakePlayersSocket;
 import me.KP56.FakePlayers.BungeeCord.Socket.FakeSocketChannel;
 import net.md_5.bungee.BungeeCord;
+import net.md_5.bungee.BungeeServerInfo;
 import net.md_5.bungee.ServerConnection;
 import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.event.LoginEvent;
+import net.md_5.bungee.api.event.PostLoginEvent;
 import net.md_5.bungee.api.event.PreLoginEvent;
 import net.md_5.bungee.api.event.ServerConnectEvent;
 import net.md_5.bungee.api.plugin.Plugin;
@@ -83,91 +87,7 @@ public class Main extends Plugin {
         FakePlayersSocket.fakePlayersSocket.start(servers, configuration.getInt("bungee-fakeplayers-port"));
     }
 
-    public String insertDashUUID(String uuid) {
-        StringBuilder sb = new StringBuilder(uuid);
-        sb.insert(8, "-");
-        sb = new StringBuilder(sb.toString());
-        sb.insert(13, "-");
-        sb = new StringBuilder(sb.toString());
-        sb.insert(18, "-");
-        sb = new StringBuilder(sb.toString());
-        sb.insert(23, "-");
-
-        return sb.toString();
-    }
-
-    public UUID getRandomUUID(String name) {
-        InputStream is = null;
-        try {
-            is = new URL("https://api.mojang.com/users/profiles/minecraft/" + name).openStream();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            int cp;
-            while ((cp = rd.read()) != -1) {
-                sb.append((char) cp);
-            }
-            String json = sb.toString();
-            int counter = 0;
-            StringBuilder id = new StringBuilder();
-
-            outerloop:
-            for (char c : json.toCharArray()) {
-                switch (counter) {
-                    case 0:
-                        if (c == 'i') {
-                            counter++;
-                        }
-                        break;
-                    case 1:
-                        if (c == 'd') {
-                            counter++;
-                        } else {
-                            counter = 0;
-                        }
-                        break;
-                    case 2:
-                    case 4:
-                        if (c == '"') {
-                            counter++;
-                        } else {
-                            counter = 0;
-                        }
-                        break;
-                    case 3:
-                        if (c == ':') {
-                            counter++;
-                        } else {
-                            counter = 0;
-                        }
-                        break;
-                    default:
-                        if (c == '"') {
-                            break outerloop;
-                        }
-                        id.append(c);
-                }
-            }
-
-            if (id.toString().length() > 0) {
-                return UUID.fromString(insertDashUUID(id.toString()));
-            } else {
-                return UUID.randomUUID();
-            }
-
-
-        } catch (IOException e) {
-            return UUID.randomUUID();
-        } finally {
-            try {
-                is.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public void addFakePlayer(String name, ServerConnection serverConnection) {
-
         NioSocketChannel channel = new NioSocketChannel(new NioServerSocketChannel(), new FakeSocketChannel(SelectorProvider.provider()));
 
         ListenerInfo listener = (ListenerInfo) BungeeCord.getInstance().config.getListeners().toArray()[0];
@@ -179,9 +99,15 @@ public class Main extends Plugin {
         InitialHandler initialHandler = new InitialHandler(BungeeCord.getInstance(), listener);
 
         try {
+            initialHandler.connected(channelWrapper);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
             Field uniqueId = InitialHandler.class.getDeclaredField("uniqueId");
             uniqueId.setAccessible(true);
-            uniqueId.set(initialHandler, getRandomUUID(name));
+            uniqueId.set(initialHandler, UUID.randomUUID());
         } catch (NoSuchFieldException | IllegalAccessException e) {
             e.printStackTrace();
         }
@@ -191,13 +117,22 @@ public class Main extends Plugin {
 
         PreLoginEvent preLoginEvent = new PreLoginEvent(initialHandler, (preLoginEvent1, throwable) -> {});
 
-        preLoginEvent.setCancelReason();
+        preLoginEvent.setCancelReason(new BaseComponent() {
+            @Override
+            public BaseComponent duplicate() {
+                return null;
+            }
+        });
 
         fakePlayers.add(fakeConnection);
 
-        BungeeCord.getInstance().getPluginManager().callEvent(preLoginEvent);
-        BungeeCord.getInstance().getPluginManager().callEvent(new LoginEvent(new InitialHandler(BungeeCord.getInstance(), listener), (preLoginEvent1, throwable) -> {
-        }, new LoginResult("", "", new LoginResult.Property[]{})));
+        try {
+            BungeeCord.getInstance().getPluginManager().callEvent(preLoginEvent);
+            BungeeCord.getInstance().getPluginManager().callEvent(new LoginEvent(initialHandler, (preLoginEvent1, throwable) -> {
+            }));
+        } catch (Exception ignored) {
+
+        }
 
         try {
             initialHandler.connected(channelWrapper);
@@ -213,10 +148,19 @@ public class Main extends Plugin {
 
         BungeeCord.getInstance().addConnection(fakeConnection);
 
-        BungeeCord.getInstance().getPluginManager().callEvent(new ServerConnectEvent(fakeConnection, serverConnection.getInfo()));
+        ServerConnectEvent serverConnectEvent = new ServerConnectEvent(fakeConnection, serverConnection.getInfo());
+        BungeeCord.getInstance().getPluginManager().callEvent(serverConnectEvent);
 
         fakeConnection.setServer(serverConnection);
-        serverConnection.getInfo().addPlayer(fakeConnection);
+        ((BungeeServerInfo) serverConnectEvent.getTarget()).addPlayer(fakeConnection);
+
+        PostLoginEvent postLoginEvent = new PostLoginEvent(fakeConnection);
+
+        try {
+            BungeeCord.getInstance().getPluginManager().callEvent(postLoginEvent);
+        } catch (Exception ignored) {
+
+        }
     }
 
 
